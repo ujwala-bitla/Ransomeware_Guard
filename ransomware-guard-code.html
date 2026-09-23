@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ransomware Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1B1E23;
+    --panel:#20242B;
+    --panel-2:#262B33;
+    --line:#333A45;
+    --line-soft:#2A2F38;
+    --text:#E8EAED;
+    --text-dim:#9AA3B2;
+    --text-faint:#6B7383;
+    --calm:#2FB6A8;
+    --calm-dim:#1E3A38;
+    --watch:#E0A72E;
+    --watch-dim:#3A331E;
+    --crit:#E05A4E;
+    --crit-dim:#3E2422;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+  :root[data-theme="light"]{
+    --bg:#F3F4F1;
+    --panel:#FFFFFF;
+    --panel-2:#F7F7F5;
+    --line:#DCDDD8;
+    --line-soft:#E7E8E4;
+    --text:#1D2024;
+    --text-dim:#5B6270;
+    --text-faint:#8E95A1;
+    --calm-dim:#DCF1EE;
+    --watch-dim:#FBEEDA;
+    --crit-dim:#FBE3E0;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#F3F4F1;
+      --panel:#FFFFFF;
+      --panel-2:#F7F7F5;
+      --line:#DCDDD8;
+      --line-soft:#E7E8E4;
+      --text:#1D2024;
+      --text-dim:#5B6270;
+      --text-faint:#8E95A1;
+      --calm-dim:#DCF1EE;
+      --watch-dim:#FBEEDA;
+      --crit-dim:#FBE3E0;
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    line-height:1.45;
+  }
+
+  .wrap{
+    max-width:1320px;
+    margin:0 auto;
+    padding:28px 24px 60px;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:24px;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .brand-mark{
+    width:38px;height:38px;flex:none;
+    border-radius:9px;
+    background:linear-gradient(160deg, var(--calm), #1F8377);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .brand-mark svg{width:20px;height:20px;}
+  .brand h1{
+    font-size:19px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .brand p{
+    margin:2px 0 0;
+    font-size:12.5px;
+    color:var(--text-faint);
+  }
+
+  .status-pill{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:9px 16px;
+    border-radius:8px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    font-family:var(--mono);
+    font-size:12.5px;
+  }
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-faint);}
+  .status-pill.calm .status-dot{background:var(--calm); box-shadow:0 0 0 3px var(--calm-dim);}
+  .status-pill.watch .status-dot{background:var(--watch); box-shadow:0 0 0 3px var(--watch-dim);}
+  .status-pill.crit .status-dot{background:var(--crit); box-shadow:0 0 0 3px var(--crit-dim); animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{
+    0%,100%{ box-shadow:0 0 0 3px var(--crit-dim); }
+    50%{ box-shadow:0 0 0 6px var(--crit-dim); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .status-pill.crit .status-dot{ animation:none; }
+  }
+
+  /* ---------- Controls bar ---------- */
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+  }
+  .controls .sep{
+    width:1px;height:22px;background:var(--line);
+    margin:0 4px;
+  }
+  button{
+    font-family:var(--sans);
+    font-size:13px;
+    font-weight:500;
+    padding:9px 14px;
+    border-radius:7px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--text);
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  button:hover{border-color:var(--text-faint);}
+  button:active{transform:translateY(1px);}
+  button:focus-visible{outline:2px solid var(--calm); outline-offset:2px;}
+  button.primary{
+    background:var(--calm);
+    border-color:var(--calm);
+    color:#0C1E1C;
+  }
+  button.primary:hover{background:#28A196;}
+  button.danger-outline{
+    color:var(--crit);
+    border-color:var(--crit);
+    background:transparent;
+  }
+  button.danger-outline:hover{ background:var(--crit-dim); }
+  button:disabled{ opacity:.45; cursor:not-allowed; }
+  .scenario-group{
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .file-import{
+    display:flex; align-items:center; gap:8px;
+    margin-left:auto;
+  }
+  .file-import label{
+    font-size:12px; color:var(--text-faint);
+    font-family:var(--mono);
+  }
+
+  /* ---------- Grid ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns: 300px 1fr 320px;
+    gap:18px;
+    align-items:start;
+  }
+  @media (max-width: 980px){
+    .grid{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px;
+  }
+  .panel + .panel{ margin-top:18px; }
+  .panel h2{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-weight:600;
+    color:var(--text-faint);
+    margin:0 0 14px;
+  }
+
+  /* ---------- Risk gauge ---------- */
+  .gauge-wrap{ display:flex; flex-direction:column; align-items:center; }
+  .gauge-num{
+    font-family:var(--mono);
+    font-size:44px;
+    font-weight:600;
+    line-height:1;
+    margin-top:-86px;
+  }
+  .gauge-label{
+    font-size:12.5px;
+    color:var(--text-dim);
+    margin-top:6px;
+    text-align:center;
+  }
+  .gauge-verdict{
+    font-family:var(--mono);
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:0.03em;
+    padding:4px 10px;
+    border-radius:5px;
+    margin-top:10px;
+  }
+  .gauge-verdict.calm{ color:var(--calm); background:var(--calm-dim); }
+  .gauge-verdict.watch{ color:var(--watch); background:var(--watch-dim); }
+  .gauge-verdict.crit{ color:var(--crit); background:var(--crit-dim); }
+
+  /* ---------- Heuristic bars ---------- */
+  .heuristic{ margin-bottom:14px; }
+  .heuristic:last-child{ margin-bottom:0; }
+  .heuristic-top{
+    display:flex; justify-content:space-between;
+    font-size:12.5px; margin-bottom:6px;
+  }
+  .heuristic-top .name{ color:var(--text); }
+  .heuristic-top .val{ font-family:var(--mono); color:var(--text-dim); }
+  .bar-track{
+    height:6px; border-radius:4px;
+    background:var(--line-soft);
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%; border-radius:4px;
+    background:var(--calm);
+    width:0%;
+    transition:width .4s ease, background .4s ease;
+  }
+
+  /* ---------- Event stream ---------- */
+  .stream-head{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:10px;
+  }
+  .stream-head h2{ margin:0; }
+  .stream-meta{ font-family:var(--mono); font-size:11.5px; color:var(--text-faint); }
+  .stream{
+    height:460px;
+    overflow-y:auto;
+    border:1px solid var(--line-soft);
+    border-radius:8px;
+    background:var(--panel-2);
+  }
+  .stream::-webkit-scrollbar{ width:8px; }
+  .stream::-webkit-scrollbar-thumb{ background:var(--line); border-radius:4px; }
+  .event-row{
+    display:grid;
+    grid-template-columns: 78px 74px 1fr auto;
+    gap:10px;
+    align-items:center;
+    padding:7px 12px;
+    font-family:var(--mono);
+    font-size:12px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .event-row:last-child{ border-bottom:none; }
+  .event-row .t{ color:var(--text-faint); }
+  .event-row .op{
+    font-weight:600;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+  }
+  .op.create{ color:var(--text-dim); }
+  .op.modify{ color:var(--watch); }
+  .op.rename{ color:#C98FE0; }
+  .op.delete{ color:var(--crit); }
+  .event-row .path{
+    color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .event-row .flag{
+    font-size:10px;
+    padding:2px 6px;
+    border-radius:4px;
+    background:var(--crit-dim);
+    color:var(--crit);
+    white-space:nowrap;
+  }
+  .stream-empty{
+    display:flex; align-items:center; justify-content:center;
+    height:100%; color:var(--text-faint); font-size:13px; text-align:center; padding:20px;
+  }
+
+  /* ---------- Alerts ---------- */
+  .alert-item{
+    padding:12px 0;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .alert-item:last-child{ border-bottom:none; }
+  .alert-top{
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:4px;
+  }
+  .alert-sev{
+    font-family:var(--mono);
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:0.03em;
+    padding:2px 7px;
+    border-radius:4px;
+  }
+  .alert-sev.watch{ background:var(--watch-dim); color:var(--watch); }
+  .alert-sev.crit{ background:var(--crit-dim); color:var(--crit); }
+  .alert-time{ font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-left:auto; }
+  .alert-msg{ font-size:13px; color:var(--text); }
+  .alert-empty{ color:var(--text-faint); font-size:13px; padding:6px 0; }
+
+  .stat-row{
+    display:flex; justify-content:space-between;
+    font-size:13px;
+    padding:8px 0;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .stat-row:last-child{ border-bottom:none; }
+  .stat-row .k{ color:var(--text-dim); }
+  .stat-row .v{ font-family:var(--mono); font-weight:600; }
+
+  .action-row{
+    display:flex; gap:8px; margin-top:14px;
+  }
+  .action-row button{ flex:1; }
+
+  footer{
+    margin-top:26px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    font-size:12px;
+    color:var(--text-faint);
+  }
+
+  .sr-only{
+    position:absolute; width:1px; height:1px;
+    padding:0; margin:-1px; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L4 5.5V11c0 5.2 3.4 9.9 8 11 4.6-1.1 8-5.8 8-11V5.5L12 2z" stroke="#0C1E1C" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12.2l2.1 2.1L15.3 10" stroke="#0C1E1C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>Ransomware Guard</h1>
+        <p>File-activity monitoring &amp; ransomware behavior detection</p>
+      </div>
+    </div>
+    <div class="status-pill calm" id="statusPill">
+      <span class="status-dot"></span>
+      <span id="statusText">Idle — not monitoring</span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <button class="primary" id="btnStart">Start monitoring</button>
+    <button id="btnStop" disabled>Stop</button>
+    <button id="btnReset">Reset</button>
+    <div class="sep"></div>
+    <div class="scenario-group">
+      <button id="scnNormal">Simulate: normal activity</button>
+      <button id="scnSuspicious">Simulate: suspicious burst</button>
+      <button class="danger-outline" id="scnAttack">Simulate: ransomware attack</button>
+    </div>
+    <div class="file-import">
+      <label for="fileInput">or analyze a CSV event log</label>
+      <button id="btnImport">Choose file</button>
+      <input type="file" id="fileInput" accept=".csv,.txt" class="sr-only">
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- LEFT: risk gauge + heuristics -->
+    <div class="col-left">
+      <div class="panel">
+        <h2>Composite risk score</h2>
+        <div class="gauge-wrap">
+          <svg width="220" height="130" viewBox="0 0 220 130" aria-hidden="true">
+            <path d="M20 110 A90 90 0 0 1 200 110" stroke="var(--line-soft)" stroke-width="14" fill="none" stroke-linecap="round"/>
+            <path id="gaugeArc" d="M20 110 A90 90 0 0 1 200 110" stroke="var(--calm)" stroke-width="14" fill="none" stroke-linecap="round"
+                  stroke-dasharray="251.3" stroke-dashoffset="251.3" style="transition:stroke-dashoffset .5s ease, stroke .5s ease;"/>
+          </svg>
+          <div class="gauge-num" id="riskNum">0</div>
+          <div class="gauge-label">out of 100 — higher means more ransomware-like behavior</div>
+          <div class="gauge-verdict calm" id="verdictPill">NORMAL</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Detection heuristics</h2>
+        <div class="heuristic">
+          <div class="heuristic-top"><span class="name">Modification rate</span><span class="val" id="hv-rate">0 / min</span></div>
+          <div class="bar-track"><div class="bar-fill" id="hb-rate"></div></div>
+        </div>
+        <div class="heuristic">
+          <div class="heuristic-top"><span class="name">Mass renaming</span><span class="val" id="hv-rename">0 files</span></div>
+          <div class="bar-track"><div class="bar-fill" id="hb-rename"></div></div>
+        </div>
+        <div class="heuristic">
+          <div class="heuristic-top"><span class="name">Suspicious extensions</span><span class="val" id="hv-ext">0 files</span></div>
+          <div class="bar-track"><div class="bar-fill" id="hb-ext"></div></div>
+        </div>
+        <div class="heuristic">
+          <div class="heuristic-top"><span class="name">High-entropy filenames</span><span class="val" id="hv-entropy">0 files</span></div>
+          <div class="bar-track"><div class="bar-fill" id="hb-entropy"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: live stream -->
+    <div class="col-center">
+      <div class="panel">
+        <div class="stream-head">
+          <h2>Live file activity</h2>
+          <span class="stream-meta" id="streamMeta">0 events</span>
+        </div>
+        <div class="stream" id="stream">
+          <div class="stream-empty">No activity yet. Start monitoring or run a simulation to see file events appear here.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: alerts + stats -->
+    <div class="col-right">
+      <div class="panel">
+        <h2>Alerts</h2>
+        <div id="alertList">
+          <div class="alert-empty">No alerts raised.</div>
+        </div>
+        <div class="action-row">
+          <button id="btnQuarantine" disabled>Isolate monitored folder</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Session stats</h2>
+        <div class="stat-row"><span class="k">Events observed</span><span class="v" id="s-events">0</span></div>
+        <div class="stat-row"><span class="k">Files renamed</span><span class="v" id="s-renamed">0</span></div>
+        <div class="stat-row"><span class="k">Suspicious extensions</span><span class="v" id="s-susext">0</span></div>
+        <div class="stat-row"><span class="k">Peak risk score</span><span class="v" id="s-peak">0</span></div>
+        <div class="stat-row"><span class="k">Elapsed</span><span class="v" id="s-elapsed">00:00</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    Simulated environment — this dashboard models file-activity patterns and detection heuristics in-browser. It does not read your real file system. Import a CSV log (columns: time, operation, path) to score real activity data with the same engine.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- State ----------
+  var state = {
+    running:false,
+    events:[],
+    stats:{ events:0, renamed:0, susExt:0, peak:0 },
+    startedAt:null,
+    timerHandle:null,
+    tickHandle:null,
+    // rolling windows for heuristics (last 15s)
+    recentMods:[],      // timestamps
+    recentRenames:[],   // {t, ext}
+    recentSusExt:[],    // {t, ext}
+    recentEntropy:[],   // {t}
+    risk:0,
+    alerts:[],
+    scenarioTimeouts:[]
+  };
+
+  var SUS_EXT = ['.locked','.encrypted','.crypt','.enc','.ransom','.locky','.cerber','.zzz','.crypted'];
+  var NORMAL_EXT = ['.docx','.xlsx','.pdf','.jpg','.png','.txt','.pptx','.csv','.json','.mp4'];
+  var FOLDERS = ['Documents','Documents/Reports','Pictures','Pictures/2026','Desktop','Projects/site','Finance','Finance/Invoices'];
+  var NAMES = ['quarterly_report','vacation_photo','budget_plan','client_notes','invoice_884','presentation_final','family_photo_02','contract_draft','meeting_notes','backup_archive','payroll_summary','design_mockup'];
+
+  // ---------- DOM ----------
+  var $ = function(id){ return document.getElementById(id); };
+  var streamEl = $('stream');
+  var alertListEl = $('alertList');
+  var statusPill = $('statusPill');
+  var statusText = $('statusText');
+
+  function fmtTime(d){
+    return d.toLocaleTimeString(undefined, {hour12:false});
+  }
+  function fmtElapsed(ms){
+    var s = Math.floor(ms/1000);
+    var m = Math.floor(s/60);
+    s = s%60;
+    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+  function randChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function randString(len){
+    var chars='abcdef0123456789';
+    var s='';
+    for(var i=0;i<len;i++){ s+=chars[Math.floor(Math.random()*chars.length)]; }
+    return s;
+  }
+
+  // crude Shannon entropy on a filename base (without extension)
+  function entropyOf(str){
+    var freq = {};
+    for(var i=0;i<str.length;i++){ freq[str[i]] = (freq[str[i]]||0)+1; }
+    var len = str.length;
+    var ent = 0;
+    Object.keys(freq).forEach(function(k){
+      var p = freq[k]/len;
+      ent -= p * Math.log2(p);
+    });
+    return ent; // ~random hex strings sit around 3.8-4.0, normal words much lower
+  }
+
+  // ---------- Rendering ----------
+  function pushEventRow(ev){
+    if(streamEl.querySelector('.stream-empty')){ streamEl.innerHTML=''; }
+    var row = document.createElement('div');
+    row.className = 'event-row';
+    var flag = ev.flagged ? '<span class="flag">'+ev.flagReason+'</span>' : '';
+    row.innerHTML =
+      '<span class="t">'+fmtTime(ev.time)+'</span>'+
+      '<span class="op '+ev.op+'">'+ev.op+'</span>'+
+      '<span class="path">'+ev.path+'</span>'+
+      flag;
+    streamEl.appendChild(row);
+    streamEl.scrollTop = streamEl.scrollHeight;
+    // cap DOM rows
+    while(streamEl.children.length > 400){ streamEl.removeChild(streamEl.firstChild); }
+  }
+
+  function renderAlerts(){
+    if(state.alerts.length===0){
+      alertListEl.innerHTML = '<div class="alert-empty">No alerts raised.</div>';
+      return;
+    }
+    var html = '';
+    state.alerts.slice().reverse().slice(0,12).forEach(function(a){
+      html += '<div class="alert-item">'+
+        '<div class="alert-top">'+
+          '<span class="alert-sev '+a.sev+'">'+a.sev.toUpperCase()+'</span>'+
+          '<span class="alert-time">'+fmtTime(a.time)+'</span>'+
+        '</div>'+
+        '<div class="alert-msg">'+a.msg+'</div>'+
+      '</div>';
+    });
+    alertListEl.innerHTML = html;
+  }
+
+  function setGauge(score){
+    score = Math.max(0, Math.min(100, score));
+    var circumference = 251.3;
+    var offset = circumference * (1 - score/100);
+    var arc = $('gaugeArc');
+    arc.style.strokeDashoffset = offset;
+    $('riskNum').textContent = Math.round(score);
+
+    var verdict = $('verdictPill');
+    var pillClass, verdictLabel, statusLabel;
+    if(score < 30){
+      pillClass='calm'; verdictLabel='NORMAL'; statusLabel='Monitoring — no anomalies';
+      arc.style.stroke = 'var(--calm)';
+    } else if(score < 65){
+      pillClass='watch'; verdictLabel='ELEVATED'; statusLabel='Monitoring — elevated activity';
+      arc.style.stroke = 'var(--watch)';
+    } else {
+      pillClass='crit'; verdictLabel='CRITICAL'; statusLabel='Possible ransomware attack';
+      arc.style.stroke = 'var(--crit)';
+    }
+    verdict.className = 'gauge-verdict '+pillClass;
+    verdict.textContent = verdictLabel;
+
+    if(state.running){
+      statusPill.className = 'status-pill '+pillClass;
+      statusText.textContent = statusLabel;
+    }
+    $('btnQuarantine').disabled = score < 65;
+  }
+
+  function updateStatsPanel(){
+    $('s-events').textContent = state.stats.events;
+    $('s-renamed').textContent = state.stats.renamed;
+    $('s-susext').textContent = state.stats.susExt;
+    $('s-peak').textContent = Math.round(state.stats.peak);
+    $('streamMeta').textContent = state.stats.events + ' events';
+  }
+
+  function setHeuristicBar(barId, valId, ratio, label){
+    var pct = Math.max(0, Math.min(100, ratio*100));
+    var el = $(barId);
+    el.style.width = pct+'%';
+    el.style.background = pct<30 ? 'var(--calm)' : (pct<65 ? 'var(--watch)' : 'var(--crit)');
+    $(valId).textContent = label;
+  }
+
+  // ---------- Detection engine ----------
+  function pruneWindow(arr, now, windowMs){
+    while(arr.length && (now - arr[0].t !== undefined ? now-arr[0].t : now-arr[0]) > windowMs){
+      arr.shift();
+    }
+  }
+
+  function recompute(){
+    var now = Date.now();
+    var WINDOW = 15000; // 15s rolling window
+
+    pruneWindow(state.recentMods, now, WINDOW);
+    pruneWindow(state.recentRenames, now, WINDOW);
+    pruneWindow(state.recentSusExt, now, WINDOW);
+    pruneWindow(state.recentEntropy, now, WINDOW);
+
+    // Heuristic 1: modification rate (events per 15s window, scaled to per-minute)
+    var modRate = state.recentMods.length * (60000/WINDOW);
+    var rateScore = Math.min(1, modRate / 240); // 240/min ~ heavy encryption sweep
+    setHeuristicBar('hb-rate','hv-rate', rateScore, Math.round(modRate)+' / min');
+
+    // Heuristic 2: mass renaming
+    var renameCount = state.recentRenames.length;
+    var renameScore = Math.min(1, renameCount / 40);
+    setHeuristicBar('hb-rename','hv-rename', renameScore, renameCount+' files');
+
+    // Heuristic 3: suspicious extensions
+    var susCount = state.recentSusExt.length;
+    var susScore = Math.min(1, susCount / 25);
+    setHeuristicBar('hb-ext','hv-ext', susScore, susCount+' files');
+
+    // Heuristic 4: high entropy filenames
+    var entCount = state.recentEntropy.length;
+    var entScore = Math.min(1, entCount / 25);
+    setHeuristicBar('hb-entropy','hv-entropy', entScore, entCount+' files');
+
+    // Weighted composite risk score
+    var composite = (
+      rateScore * 30 +
+      renameScore * 25 +
+      susScore * 30 +
+      entScore * 15
+    );
+
+    // smooth toward target
+    state.risk = state.risk + (composite - state.risk) * 0.35;
+    state.stats.peak = Math.max(state.stats.peak, state.risk);
+    setGauge(state.risk);
+    updateStatsPanel();
+
+    maybeAlert(rateScore, renameScore, susScore, entScore, now);
+  }
+
+  var lastAlertLevel = 'none';
+  function maybeAlert(rateScore, renameScore, susScore, entScore, now){
+    var level = 'none';
+    if(state.risk >= 65) level='crit';
+    else if(state.risk >= 30) level='watch';
+
+    if(level !== 'none' && level !== lastAlertLevel){
+      var msg;
+      if(level==='crit'){
+        var reasons = [];
+        if(susScore>0.3) reasons.push('suspicious file extensions');
+        if(renameScore>0.3) reasons.push('mass file renaming');
+        if(rateScore>0.3) reasons.push('abnormal modification rate');
+        if(entScore>0.3) reasons.push('randomized filenames');
+        msg = 'Ransomware-like pattern detected'+(reasons.length? ' — '+reasons.join(', ') : '')+'. Composite risk '+Math.round(state.risk)+'/100.';
+      } else {
+        msg = 'File activity above baseline. Composite risk '+Math.round(state.risk)+'/100 — monitoring closely.';
+      }
+      state.alerts.push({ time:new Date(now), sev: level==='crit'?'crit':'watch', msg: msg });
+      renderAlerts();
+    }
+    if(level==='none' && lastAlertLevel!=='none'){
+      state.alerts.push({ time:new Date(now), sev:'watch', msg:'Activity returned to baseline.' });
+      renderAlerts();
+    }
+    lastAlertLevel = level;
+  }
+
+  // ---------- Event ingestion ----------
+  function ingestEvent(op, folder, baseName, ext, opts){
+    opts = opts || {};
+    var now = Date.now();
+    var path = folder + '/' + baseName + ext;
+    var flagged = false, flagReason = '';
+
+    state.stats.events++;
+
+    if(op==='modify'){
+      state.recentMods.push(now);
+    }
+    if(op==='rename'){
+      state.stats.renamed++;
+      state.recentRenames.push({t:now, ext:ext});
+    }
+    if(SUS_EXT.indexOf(ext) !== -1){
+      state.stats.susExt++;
+      state.recentSusExt.push({t:now, ext:ext});
+      flagged = true; flagReason = 'suspicious ext';
+    }
+    var ent = entropyOf(baseName);
+    if(ent > 3.4 && baseName.length >= 8){
+      state.recentEntropy.push({t:now});
+      if(!flagged){ flagged=true; flagReason='high entropy name'; }
+    }
+
+    pushEventRow({ time:new Date(now), op:op, path:path, flagged:flagged, flagReason:flagReason });
+    recompute();
+  }
+
+  // ---------- Simulation generators ----------
+  function genNormalEvent(){
+    var op = randChoice(['create','modify','modify','rename']);
+    var folder = randChoice(FOLDERS);
+    var base = randChoice(NAMES) + (Math.random()<0.4 ? '_v'+(1+Math.floor(Math.random()*9)) : '');
+    var ext = randChoice(NORMAL_EXT);
+    ingestEvent(op, folder, base, ext);
+  }
+
+  function genSuspiciousEvent(){
+    // mix of normal + occasional renames, moderate pace, no encryption exts
+    if(Math.random() < 0.35){
+      var folder = randChoice(FOLDERS);
+      var base = randChoice(NAMES);
+      var ext = randChoice(NORMAL_EXT);
+      ingestEvent('rename', folder, base+'_copy', ext);
+    } else {
+      genNormalEvent();
+    }
+  }
+
+  function genAttackEvent(){
+    var folder = randChoice(FOLDERS);
+    var base = randChoice(NAMES);
+    var origExt = randChoice(NORMAL_EXT);
+    var newExt = randChoice(SUS_EXT);
+    var randomName = randString(10);
+    var op = randChoice(['modify','rename','rename']);
+    if(op==='rename'){
+      ingestEvent('rename', folder, randomName, newExt);
+    } else {
+      ingestEvent('modify', folder, base, origExt);
+    }
+  }
+
+  // ---------- Simulation control ----------
+  var simInterval = null;
+  function stopSimGenerator(){
+    if(simInterval){ clearInterval(simInterval); simInterval=null; }
+  }
+  function runGenerator(genFn, intervalMs, durationMs){
+    stopSimGenerator();
+    simInterval = setInterval(genFn, intervalMs);
+    if(durationMs){
+      var to = setTimeout(function(){ stopSimGenerator(); }, durationMs);
+      state.scenarioTimeouts.push(to);
+    }
+  }
+
+  function ensureRunning(){
+    if(!state.running){ startMonitoring(); }
+  }
+
+  // ---------- Monitoring lifecycle ----------
+  function startMonitoring(){
+    if(state.running) return;
+    state.running = true;
+    state.startedAt = Date.now();
+    $('btnStart').disabled = true;
+    $('btnStop').disabled = false;
+    statusPill.className = 'status-pill calm';
+    statusText.textContent = 'Monitoring — no anomalies';
+
+    // ambient trickle of normal activity while "monitoring"
+    simInterval = setInterval(genNormalEvent, 1400);
+
+    state.tickHandle = setInterval(function(){
+      recompute();
+      $('s-elapsed').textContent = fmtElapsed(Date.now()-state.startedAt);
+    }, 500);
+  }
+
+  function stopMonitoring(){
+    state.running = false;
+    stopSimGenerator();
+    state.scenarioTimeouts.forEach(clearTimeout);
+    state.scenarioTimeouts = [];
+    if(state.tickHandle){ clearInterval(state.tickHandle); state.tickHandle=null; }
+    $('btnStart').disabled = false;
+    $('btnStop').disabled = true;
+    statusPill.className = 'status-pill';
+    statusText.textContent = 'Idle — not monitoring';
+  }
+
+  function resetAll(){
+    stopMonitoring();
+    state.events=[];
+    state.stats={events:0, renamed:0, susExt:0, peak:0};
+    state.recentMods=[]; state.recentRenames=[]; state.recentSusExt=[]; state.recentEntropy=[];
+    state.risk=0; state.alerts=[]; lastAlertLevel='none';
+    streamEl.innerHTML = '<div class="stream-empty">No activity yet. Start monitoring or run a simulation to see file events appear here.</div>';
+    renderAlerts();
+    setGauge(0);
+    updateStatsPanel();
+    $('s-elapsed').textContent = '00:00';
+  }
+
+  // ---------- Wire up controls ----------
+  $('btnStart').addEventListener('click', startMonitoring);
+  $('btnStop').addEventListener('click', stopMonitoring);
+  $('btnReset').addEventListener('click', resetAll);
+
+  $('scnNormal').addEventListener('click', function(){
+    ensureRunning();
+    runGenerator(genNormalEvent, 900, 8000);
+  });
+  $('scnSuspicious').addEventListener('click', function(){
+    ensureRunning();
+    runGenerator(genSuspiciousEvent, 350, 9000);
+  });
+  $('scnAttack').addEventListener('click', function(){
+    ensureRunning();
+    runGenerator(genAttackEvent, 90, 7000);
+  });
+
+  $('btnQuarantine').addEventListener('click', function(){
+    stopSimGenerator();
+    state.alerts.push({ time:new Date(), sev:'crit', msg:'Monitored folder isolated. New write activity blocked (simulated response).' });
+    renderAlerts();
+  });
+
+  $('btnImport').addEventListener('click', function(){ $('fileInput').click(); });
+  $('fileInput').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      analyzeCsv(ev.target.result);
+    };
+    reader.readAsText(file);
+  });
+
+  function analyzeCsv(text){
+    resetAll();
+    startMonitoring();
+    stopSimGenerator(); // no synthetic traffic while replaying a real log
+
+    var lines = text.split(/\r?\n/).filter(function(l){ return l.trim().length>0; });
+    if(lines.length===0) return;
+
+    // detect header
+    var startIdx = 0;
+    var header = lines[0].toLowerCase();
+    if(header.indexOf('time')!==-1 || header.indexOf('operation')!==-1 || header.indexOf('path')!==-1){
+      startIdx = 1;
+    }
+
+    var rows = [];
+    for(var i=startIdx;i<lines.length;i++){
+      var parts = lines[i].split(',');
+      if(parts.length<3) continue;
+      var opRaw = parts[1].trim().toLowerCase();
+      var op = ['create','modify','rename','delete'].indexOf(opRaw)!==-1 ? opRaw : 'modify';
+      var path = parts.slice(2).join(',').trim();
+      rows.push({ op:op, path:path });
+    }
+
+    var i=0;
+    var replay = setInterval(function(){
+      if(i>=rows.length){ clearInterval(replay); return; }
+      var r = rows[i];
+      var slash = r.path.lastIndexOf('/');
+      var folder = slash!==-1 ? r.path.slice(0,slash) : '.';
+      var fname = slash!==-1 ? r.path.slice(slash+1) : r.path;
+      var dot = fname.lastIndexOf('.');
+      var base = dot!==-1 ? fname.slice(0,dot) : fname;
+      var ext = dot!==-1 ? fname.slice(dot) : '';
+      ingestEvent(r.op, folder, base, ext);
+      i++;
+    }, 25);
+  }
+
+  // initial paint
+  setGauge(0);
+  updateStatsPanel();
+})();
+</script>
+</body>
+</html>
